@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NAMESPACE="argocd"
+RELEASE_NAME="argocd"
+HELM_REPO="argo/argocd"
+HELM_CHART_REF="oci://ghcr.io/rezakaramad/charts/argocd"
+HELM_VERSION="1.0.1"
+
+echo "📁 Ensuring namespace 'argocd' exists..."
+kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+
+echo "🗑️ Removing old TLS secret if present..."
+kubectl -n argocd delete secret gateway-tls --ignore-not-found
+kubectl -n argocd delete secret argocd-server-tls --ignore-not-found
+kubectl -n argocd delete configmap argocd-ca --ignore-not-found
+
+echo "🔐 Creating new TLS secret"
+# Client ⇆ Gateway (TLS)
+kubectl -n kube-system create secret tls gateway-tls \
+  --cert=.certs/gateway.crt --key=.certs/gateway.key
+# Gateway ⇆ Argo CD Server
+kubectl -n argocd create secret tls argocd-server-tls \
+  --cert=.certs/argocd.crt --key=.certs/argocd.key
+kubectl -n argocd create configmap argocd-ca \
+  --from-file=ca.crt=.certs/rootCA.crt
+
+echo "✅ Certificate chain ready."
+
+echo "🔄 Updating Helm repositories..."
+helm repo update
+
+echo "🚀 Installing or upgrading Argo CD (release: $RELEASE_NAME)..."
+helm upgrade --install "$RELEASE_NAME" "$HELM_CHART_REF" \
+  --namespace "$NAMESPACE" \
+  --version "$HELM_VERSION" \
+  --wait
+
+echo "📡 Creating the root application..."
+kubectl apply -f - <<'EOF'
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: plt-gitops-builder
+  namespace: argocd
+  labels:
+    cluster: minikube
+    app: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/rezakaramad/charts
+    targetRevision: main
+    path: charts/gitops-builder
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    syncOptions:
+    - ApplyOutOfSyncOnly=true 
+EOF
+echo "✅ Root Application applied."
+
+echo "🎉 Argo CD installed."
