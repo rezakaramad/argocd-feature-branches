@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: platform-gitops
+  name: platform
   namespace: argocd
   labels:
     cluster: minikube
@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://github.com/rezakaramad/charts
     targetRevision: main
-    path: charts/platform-gitops
+    path: charts/platform
     helm:
       values: |
         platform:
