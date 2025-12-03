@@ -23,7 +23,7 @@ spec:
     metadata:
       name: '{{ if .number }}petcare-builder-pr-{{ .number }}{{ else }}{{ .tenantName }}-builder{{ end }}'
     spec:
-      project: '{{ if .number }}"petcare-pr-{{ .number }}"{{ else }}"{{ .instance }}"{{ end }}'
+      project: plt-tenant
       source:
         repoURL: https://github.com/rezakaramad/charts.git
         targetRevision: main
@@ -42,4 +42,3 @@ spec:
         automated:
           prune: true
           selfHeal: true
-
