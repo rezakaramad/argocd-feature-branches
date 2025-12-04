@@ -42,7 +42,7 @@ kubectl apply -f - <<'EOF'
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: plt-gitops-builder
+  name: gitops-builder
   namespace: argocd
   labels:
     cluster: minikube
